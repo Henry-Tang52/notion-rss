@@ -249,6 +249,46 @@ func (dao NotionDao) AddRssItem(item RssItem) error {
 }
 
 func RssContentToBlocks(item RssItem) []notionapi.Block {
-	// TODO: implement when we know RssItem struct better
-	return []notionapi.Block{}
+	if len(item.content) == 0 {
+		return []notionapi.Block{}
+	}
+
+	// Combine all content parts (in case there are multiple)
+	content := ""
+	for _, c := range item.content {
+		if c != "" {
+			content += c + "\n\n"
+		}
+	}
+
+	if content == "" {
+		return []notionapi.Block{}
+	}
+
+	// Create HTML parser and parse the content
+	parser := NewHTMLParser()
+	blocks := parser.Parse(content)
+	
+	if len(blocks) == 0 {
+		// If no blocks were created from HTML, fall back to plain text
+		text := content
+		if len(text) > 2000 {
+			text = text[:2000] + "..."
+		}
+		blocks = []notionapi.Block{
+			notionapi.ParagraphBlock{
+				RichText: []notionapi.RichText{
+					{
+						Type: notionapi.ObjectTypeText,
+						Text: notionapi.Text{
+							Content: text,
+						},
+						PlainText: text,
+					},
+				},
+			},
+		}
+	}
+	
+	return blocks
 }
